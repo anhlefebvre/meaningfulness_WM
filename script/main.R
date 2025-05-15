@@ -34,6 +34,8 @@ get_p_response = function(main_data) {
 ### Main ###
 main_data = get_main_data(data_path)
 
+
+### Analysis
 summary_p_correct = summarize_plot(
   .data = main_data,
   DV = correct,
@@ -43,8 +45,6 @@ summary_p_correct = summarize_plot(
 )
 
 summary_all_response_types = get_p_response(main_data)
-
-
 
 ### Plot ###
 
