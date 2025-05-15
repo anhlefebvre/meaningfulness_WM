@@ -7,16 +7,8 @@ library(ggplot2)
 library(here)
 
 
+source("data_preprocessing.R")
 source("plot_summary_functions.R")
-
-get_main_data = function(data_path) {
-  data = read_delim(data_path)
-  data_main = filter(data, phase == "Main"  & cheating == "no" & seriousness == "yes")
-  artificial = filter(data_main, condition == "artificial")
-  scram = filter(data_main, condition == "scram")
-  real = filter(data_main, condition == "real")
-  return(bind_rows(artificial, scram, real))
-}
 
 get_p_response = function(main_data) {
   main_data = main_data %>%
@@ -40,10 +32,7 @@ get_p_response = function(main_data) {
 }
 
 ### Main ###
-data_path = here("data", "data_raw.txt")
-main_data = read_delim(data_path) %>%
-  filter(phase == "Main", cheating == "no", seriousness == "yes") %>%
-  filter(condition %in% c("artificial", "real", "scram"))
+main_data = get_main_data(data_path)
 
 summary_p_correct = summarize_plot(
   .data = main_data,
@@ -55,6 +44,8 @@ summary_p_correct = summarize_plot(
 
 summary_all_response_types = get_p_response(main_data)
 
+
+
 ### Plot ###
 
 #Plot P(correct)
@@ -65,11 +56,15 @@ ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, fill = condition)
     title = "Proportion Correct by Condition",
     x = "Condition",
     y = "P(correct)"
+  ) + 
+  theme(
+    plot.title      = element_text(face = "bold", hjust = 0.5),
+    legend.position = "right"
   )
 
 #Plot response types by condition
 ggplot(summary_all_response_types, aes(x = condition, y = proportion, color = selected_type, group = selected_type, shape = selected_type)) +
-  geom_point(size = 3) +
+  geom_point(size = 4, stroke = 1.2) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(
     title = "Proportion of Selected Response Types by Condition",
@@ -78,4 +73,7 @@ ggplot(summary_all_response_types, aes(x = condition, y = proportion, color = se
     color = "Response Type",
     shape = "Response Type"
   ) +
-  theme_minimal()
+  theme(
+    plot.title      = element_text(face = "bold", hjust = 0.5),
+    legend.position = "right"
+  )
