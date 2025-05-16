@@ -8,6 +8,7 @@ library(ggplot2)
 library(here)
 
 
+
 source("data_preprocessing.R")
 source("plot_summary_functions.R")
 
@@ -113,8 +114,8 @@ m3_formula <- bmf(
   target ~ b + a + c,
   within ~ b + a,
   extra  ~ b,
-  a ~ 1 + cond + (1 | id),
-  c ~ 1 + cond + (1 | id)
+  a ~ 0 + cond + (1 | id),
+  c ~ 0 + cond + (1 | id)
 )
 
 #specify links for model parameters
@@ -133,5 +134,11 @@ m3_fit <- bmm(
   iter = 2000
 )
 
-#print
 summary(m3_fit)
+
+#Transform back to exponential
+posterior_summary = as.data.frame(summary(m3_fit)$fixed)
+posterior_summary$Estimate_real_scale = exp(posterior_summary$Estimate)
+posterior_summary$CI_low_real = exp(posterior_summary$`l-95% CI`)
+posterior_summary$CI_high_real = exp(posterior_summary$`u-95% CI`)
+
