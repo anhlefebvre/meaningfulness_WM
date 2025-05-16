@@ -1,6 +1,7 @@
 rm(list = ls())
 
 library(brms)
+library(bmm)
 library("tidyverse")
 library(dplyr)
 library(ggplot2)
@@ -10,6 +11,9 @@ library(here)
 source("data_preprocessing.R")
 source("plot_summary_functions.R")
 
+### Functions
+
+# Get p(correct) for each conditions
 get_p_response = function(main_data) {
   main_data = main_data %>%
     mutate(
@@ -77,3 +81,57 @@ ggplot(summary_all_response_types, aes(x = condition, y = proportion, color = se
     plot.title      = element_text(face = "bold", hjust = 0.5),
     legend.position = "right"
   )
+
+# Bayesian 
+data_m3 = main_data %>%
+  group_by(participant_id, condition) %>%
+  summarise(
+    target = sum(selected_type == "target"),
+    within_list = sum(selected_type == "within_list"),
+    extra_list = sum(selected_type == "extra_list"),
+  ) %>%
+  ungroup()
+
+data_m3 <- data_m3 %>%
+  rename(
+    target = target,
+    within = within_list,
+    extra = extra_list,
+    id = participant_id,
+    cond = condition
+  )
+
+#Initiate m3 model objects
+m3_model <- m3(
+  resp_cats = c("target", "within", "extra"),
+  num_options = c(1, 2, 3),
+  choice_rule = "softmax"
+)
+
+#specify the model formula 
+m3_formula <- bmf(
+  target ~ b + a + c,
+  within ~ b + a,
+  extra  ~ b,
+  a ~ 1 + cond + (1 | id),
+  c ~ 1 + cond + (1 | id)
+)
+
+#specify links for model parameters
+m3_model$links <- list(
+  a = "log",
+  c = "log"
+)
+
+#fit the model
+m3_fit <- bmm(
+  formula = m3_formula,
+  data = data_m3,
+  model = m3_model,
+  cores = 4,
+  chains = 4,
+  iter = 2000
+)
+
+#print
+summary(m3_fit)

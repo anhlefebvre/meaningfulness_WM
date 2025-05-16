@@ -15,7 +15,7 @@ get_main_data = function(data_path, exclude_cheaters = TRUE, cut_off = 0.9, excl
     select(participant_id, phase, trial_number, condition, probe_index, probe_image,
            selected_image, selected_type, correct, response_time)
   
-  write_delim(data_main, here("data", "main_data.txt"), delim = "\t")
+  write_delim(data_main, here("data", "main_data_without_exclusion.txt"), delim = "\t")
   
   #Filter the cheaters
   p_correct_per_participant = data_main %>%
@@ -59,7 +59,7 @@ get_main_data = function(data_path, exclude_cheaters = TRUE, cut_off = 0.9, excl
   total_removed = union(potential_cheater, chance_performers)
   cat("\nTotal unique participants removed:", length(total_removed), "\n")
   
-  write_delim(cleaned_data, here("data", "cleaned_data.txt"), delim = "\t")
+  write_delim(cleaned_data, here("data", "main_data_with_exclusion"), delim = "\t")
   
   return(cleaned_data)
 }
