@@ -6,6 +6,7 @@ library("tidyverse")
 library(dplyr)
 library(ggplot2)
 library(here)
+library(tidybayes)
 
 
 
@@ -93,7 +94,7 @@ data_m3 = main_data %>%
   ) %>%
   ungroup()
 
-data_m3 <- data_m3 %>%
+data_m3 = data_m3 %>%
   rename(
     target = target,
     within = within_list,
@@ -103,14 +104,14 @@ data_m3 <- data_m3 %>%
   )
 
 #Initiate m3 model objects
-m3_model <- m3(
+m3_model = m3(
   resp_cats = c("target", "within", "extra"),
   num_options = c(1, 2, 3),
   choice_rule = "softmax"
 )
 
 #specify the model formula 
-m3_formula <- bmf(
+m3_formula = bmf(
   target ~ b + a + c,
   within ~ b + a,
   extra  ~ b,
@@ -119,13 +120,13 @@ m3_formula <- bmf(
 )
 
 #specify links for model parameters
-m3_model$links <- list(
+m3_model$links = list(
   a = "log",
   c = "log"
 )
 
 #fit the model
-m3_fit <- bmm(
+m3_fit = bmm(
   formula = m3_formula,
   data = data_m3,
   model = m3_model,
@@ -142,3 +143,6 @@ posterior_summary$Estimate_real_scale = exp(posterior_summary$Estimate)
 posterior_summary$CI_low_real = exp(posterior_summary$`l-95% CI`)
 posterior_summary$CI_high_real = exp(posterior_summary$`u-95% CI`)
 
+#extract posterior sample
+posterior_sample_m3 = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE) %>%
+  mutate(value_exponential = exp(.value))
