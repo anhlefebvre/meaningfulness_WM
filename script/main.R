@@ -7,7 +7,10 @@ library(dplyr)
 library(ggplot2)
 library(here)
 library(tidybayes)
-
+library(bridgesampling)
+library(logspline)
+library(polspline)
+library(bayestestR)
 
 
 source("data_preprocessing.R")
@@ -139,10 +142,80 @@ summary(m3_fit)
 
 #Transform back to exponential
 posterior_summary = as.data.frame(summary(m3_fit)$fixed)
-posterior_summary$Estimate_real_scale = exp(posterior_summary$Estimate)
-posterior_summary$CI_low_real = exp(posterior_summary$`l-95% CI`)
-posterior_summary$CI_high_real = exp(posterior_summary$`u-95% CI`)
+posterior_summary$Estimate_exp_scale = exp(posterior_summary$Estimate)
+posterior_summary$CI_low_exp = exp(posterior_summary$`l-95% CI`)
+posterior_summary$CI_high_exp = exp(posterior_summary$`u-95% CI`)
 
-#extract posterior sample
+#extract posterior sample + take relevant data and exponential_value
 posterior_sample_m3 = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE) %>%
   mutate(value_exponential = exp(.value))
+
+### For item memory ### 
+a_draws = posterior_sample_m3 %>%
+  filter(str_detect(.variable, "b_a_")) %>%
+  select(.draw, .variable, value_exponential) %>%
+  pivot_wider(names_from = .variable, values_from = value_exponential)
+
+# compute the posterior distribution of each pairwise difference 
+a_draws = a_draws %>%
+  mutate(diff_real_scram = b_a_condreal - b_a_condscram,
+         diff_real_artificial = b_a_condreal - b_a_condartificial,
+         diff_artificial_scram = b_a_condartificial - b_a_condscram)
+
+#Plot for real - scram
+a_draws %>%
+  ggplot(aes(x = diff_real_scram)) + 
+  geom_density(fill = "blue", alpha = 0.5) + 
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Posterior distribution: a-real-a-scram")
+#Plot for real-artificial
+a_draws %>%
+  ggplot(aes(x = diff_real_artificial)) + 
+  geom_density(fill = "green", alpha = 0.5) + 
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Posterior distribution: a-real - a-artificial")
+
+#Plot for artificial - scram
+a_draws %>%
+  ggplot(aes(x = diff_artificial_scram)) + 
+  geom_density(fill = "orange", alpha = 0.5) + 
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Posterior distribution: a-artificial - a-scram")
+
+### Bayes Factors
+# Prior density
+prior_density = dnorm(0, mean = 0, sd = 0.7)
+
+# Posterior differences on log scale
+a_draws_log = posterior_sample_m3 %>%
+  filter(str_detect(.variable, "b_a_")) %>%
+  select(.draw, .variable, .value) %>%
+  pivot_wider(names_from = .variable, values_from = .value) %>%
+  mutate(
+    real_scram = b_a_condreal - b_a_condscram,
+    real_artificial = b_a_condreal - b_a_condartificial,
+    artificial_scram = b_a_condartificial - b_a_condscram
+  )
+
+### Bayes Factors
+prior_density = dnorm(0, 0, 0.7)
+
+a_draws_log = posterior_sample_m3%>%
+  filter(str_detect(.variable, "b_a_")) %>%
+  select(.draw, .variable, .value) %>%
+  pivot_wider(names_from = .variable, values_from = .value)
+
+a_draws_log = a_draws_log %>%
+  mutate(
+    real_scram = b_a_condreal - b_a_condscram,
+    real_artificial = b_a_condreal - b_a_condartificial,
+    artificial_scram = b_a_condartificial - b_a_condscram
+  )
+
+pd_real_scram = density_at(a_draws_log$real_scram, 0)
+pd_real_artificial = density_at(a_draws_log$real_artificial, 0)
+pd_artificial_scram = density_at(a_draws_log$artificial_scram, 0)
+
+BF_real_scram = prior_density / pd_real_scram
+BF_real_artificial = prior_density / pd_real_artificial
+BF_artificial_scram = prior_density / pd_artificial_scram
