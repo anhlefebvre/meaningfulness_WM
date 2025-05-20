@@ -9,12 +9,12 @@ library(here)
 library(tidybayes)
 library(bridgesampling)
 library(logspline)
-library(polspline)
+#library(polspline)
 library(bayestestR)
 
 
-source("data_preprocessing.R")
-source("plot_summary_functions.R")
+source(here("script", "data_preprocessing.R"))
+source(here("script", "plot_summary_functions.R"))
 
 ### Functions
 
@@ -110,7 +110,15 @@ data_m3 = data_m3 %>%
 m3_model = m3(
   resp_cats = c("target", "within", "extra"),
   num_options = c(1, 2, 3),
-  choice_rule = "softmax"
+  choice_rule = "softmax",
+  links = list(
+    a = "log",
+    c = "log"
+  ),
+  default_priors = list(
+    a = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)"),
+    c = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)")
+  )
 )
 
 #specify the model formula 
@@ -118,24 +126,21 @@ m3_formula = bmf(
   target ~ b + a + c,
   within ~ b + a,
   extra  ~ b,
-  a ~ 0 + cond + (1 | id),
-  c ~ 0 + cond + (1 | id)
+  a ~ 0 + cond + (0 + cond || id),
+  c ~ 0 + cond + (0 + cond || id)
 )
 
-#specify links for model parameters
-m3_model$links = list(
-  a = "log",
-  c = "log"
-)
 
 #fit the model
-m3_fit = bmm(
+m3_fit = bmm::bmm(
   formula = m3_formula,
   data = data_m3,
   model = m3_model,
   cores = 4,
   chains = 4,
-  iter = 2000
+  iter = 12500,
+  warmup = 1000,
+  init = 1
 )
 
 summary(m3_fit)
@@ -148,7 +153,7 @@ posterior_summary$CI_high_exp = exp(posterior_summary$`u-95% CI`)
 
 #extract posterior sample + take relevant data and exponential_value
 posterior_sample_m3 = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE) %>%
-  mutate(value_exponential = exp(.value))
+  mutate(value_exponential = .value)
 
 ### For item memory ### 
 a_draws = posterior_sample_m3 %>%
@@ -184,38 +189,49 @@ a_draws %>%
 
 ### Bayes Factors
 # Prior density
-prior_density = dnorm(0, mean = 0, sd = 0.7)
+prior_density = dnorm(0, mean = 0, sd = sqrt(2) * 0.7)
 
-# Posterior differences on log scale
-a_draws_log = posterior_sample_m3 %>%
-  filter(str_detect(.variable, "b_a_")) %>%
-  select(.draw, .variable, .value) %>%
-  pivot_wider(names_from = .variable, values_from = .value) %>%
-  mutate(
-    real_scram = b_a_condreal - b_a_condscram,
-    real_artificial = b_a_condreal - b_a_condartificial,
-    artificial_scram = b_a_condartificial - b_a_condscram
-  )
+posterior_sample_m3_log = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE)
 
-### Bayes Factors
-prior_density = dnorm(0, 0, 0.7)
 
-a_draws_log = posterior_sample_m3%>%
+a_draws_log = posterior_sample_m3_log %>%
   filter(str_detect(.variable, "b_a_")) %>%
   select(.draw, .variable, .value) %>%
   pivot_wider(names_from = .variable, values_from = .value)
 
-a_draws_log = a_draws_log %>%
+a_draws_log_diff = a_draws_log %>%
   mutate(
     real_scram = b_a_condreal - b_a_condscram,
     real_artificial = b_a_condreal - b_a_condartificial,
     artificial_scram = b_a_condartificial - b_a_condscram
   )
 
-pd_real_scram = density_at(a_draws_log$real_scram, 0)
-pd_real_artificial = density_at(a_draws_log$real_artificial, 0)
-pd_artificial_scram = density_at(a_draws_log$artificial_scram, 0)
+pd_real_scram_a = density_at(a_draws_log_diff$real_scram, 0, extend = TRUE)
+pd_real_artificial_a = density_at(a_draws_log_diff$real_artificial, 0, extend = TRUE)
+pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend = TRUE)
 
-BF_real_scram = prior_density / pd_real_scram
-BF_real_artificial = prior_density / pd_real_artificial
-BF_artificial_scram = prior_density / pd_artificial_scram
+BF_real_scram_a = prior_density / pd_real_scram_a
+BF_real_artificial_a = prior_density / pd_real_artificial_a
+BF_artificial_scram_a = prior_density / pd_artificial_scram_a
+
+
+
+c_draws_log = posterior_sample_m3_log %>%
+  filter(str_detect(.variable, "b_c_")) %>%
+  select(.draw, .variable, .value) %>%
+  pivot_wider(names_from = .variable, values_from = .value)
+
+c_draws_log_diff = c_draws_log %>%
+  mutate(
+    real_scram = b_c_condreal - b_c_condscram,
+    real_artificial = b_c_condreal - b_c_condartificial,
+    artificial_scram = b_c_condartificial - b_c_condscram
+  )
+
+pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE)
+pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE)
+pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE)
+
+BF_real_scram_c = prior_density / pd_real_scram_c
+BF_real_artificial_c = prior_density / pd_real_artificial_c
+BF_artificial_scram_c = prior_density / pd_artificial_scram_c
