@@ -55,38 +55,6 @@ summary_p_correct = summarize_plot(
 
 summary_all_response_types = get_p_response(main_data)
 
-### Plot ###
-
-#Plot P(correct)
-ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, fill = condition)) +
-  geom_col(width = 0.6, color = "black") +  
-  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), width = 0.2) +  
-  labs(
-    title = "Proportion Correct by Condition",
-    x = "Condition",
-    y = "P(correct)"
-  ) + 
-  theme(
-    plot.title      = element_text(face = "bold", hjust = 0.5),
-    legend.position = "right"
-  )
-
-#Plot response types by condition
-ggplot(summary_all_response_types, aes(x = condition, y = proportion, color = selected_type, group = selected_type, shape = selected_type)) +
-  geom_point(size = 4, stroke = 1.2) +
-  scale_y_continuous(limits = c(0, 1)) +
-  labs(
-    title = "Proportion of Selected Response Types by Condition",
-    x = "Condition",
-    y = "Proportion",
-    color = "Response Type",
-    shape = "Response Type"
-  ) +
-  theme(
-    plot.title      = element_text(face = "bold", hjust = 0.5),
-    legend.position = "right"
-  )
-
 # Bayesian 
 data_m3 = main_data %>%
   group_by(participant_id, condition) %>%
@@ -163,29 +131,38 @@ a_draws = posterior_sample_m3 %>%
 
 # compute the posterior distribution of each pairwise difference 
 a_draws = a_draws %>%
-  mutate(diff_real_scram = b_a_condreal - b_a_condscram,
-         diff_real_artificial = b_a_condreal - b_a_condartificial,
-         diff_artificial_scram = b_a_condartificial - b_a_condscram)
+  mutate(diff_real_scram_a = b_a_condreal - b_a_condscram,
+         diff_real_artificial_a = b_a_condreal - b_a_condartificial,
+         diff_artificial_scram_a = b_a_condartificial - b_a_condscram)
 
-#Plot for real - scram
-a_draws %>%
-  ggplot(aes(x = diff_real_scram)) + 
-  geom_density(fill = "blue", alpha = 0.5) + 
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Posterior distribution: a-real-a-scram")
-#Plot for real-artificial
-a_draws %>%
-  ggplot(aes(x = diff_real_artificial)) + 
-  geom_density(fill = "green", alpha = 0.5) + 
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Posterior distribution: a-real - a-artificial")
+### For binding memory ###
+c_draws = posterior_sample_m3 %>%
+  filter(str_detect(.variable, "b_c_")) %>%
+  select(.draw, .variable, value_exponential) %>%
+  pivot_wider(names_from = .variable, values_from = value_exponential)
 
-#Plot for artificial - scram
-a_draws %>%
-  ggplot(aes(x = diff_artificial_scram)) + 
-  geom_density(fill = "orange", alpha = 0.5) + 
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Posterior distribution: a-artificial - a-scram")
+# compute the posterior distribution of each pairwise difference 
+c_draws = c_draws %>%
+  mutate(diff_real_scram_c = b_c_condreal - b_c_condscram,
+         diff_real_artificial_c = b_c_condreal - b_c_condartificial,
+         diff_artificial_scram_c = b_c_condartificial - b_c_condscram)
+
+# Compare both a-c
+plot_data = posterior_sample_m3 %>%
+  filter(str_detect(.variable, "b_a_") | str_detect(.variable, "b_c_")) %>%
+  mutate(
+    param = if_else(str_detect(.variable, "b_a_"), "a", "c"),
+    condition = str_remove(.variable, "b_[ac]_cond")
+  )
+
+plot_summary = plot_data %>%
+  group_by(param, condition) %>%
+  summarise(
+    mean = mean(exp(.value)),
+    lower = quantile(exp(.value), 0.025),
+    upper = quantile(exp(.value), 0.975),
+    .groups = "drop"
+  )
 
 ### Bayes Factors
 # Prior density
@@ -213,8 +190,6 @@ pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend 
 BF_real_scram_a = prior_density / pd_real_scram_a
 BF_real_artificial_a = prior_density / pd_real_artificial_a
 BF_artificial_scram_a = prior_density / pd_artificial_scram_a
-
-
 
 c_draws_log = posterior_sample_m3_log %>%
   filter(str_detect(.variable, "b_c_")) %>%
