@@ -37,23 +37,26 @@ plot_p_correct = ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, 
 # ---- Plot 2: Response Types by Condition ----
 summary_all_response_types$plot_label = "Proportion of Selected Response Types by Condition"
 
-response_type_colors = c(
-  "target" = "#1B9E77",
+summary_filtered = summary_all_response_types %>%
+  filter(selected_type %in% c("within-list", "extra-list"))
+
+response_type_colors_filtered = c(
   "within-list" = "#2171B5",
   "extra-list" = "#D95F02"
 )
 
-plot_response_types = ggplot(summary_all_response_types, aes(
+plot_response_types = ggplot(summary_filtered, aes(
   x = condition,
   y = proportion,
   group = selected_type
 )) +
   geom_point(aes(shape = selected_type, fill = selected_type),
+             position = position_dodge(width = 0.4),
              size = 5, stroke = 1.2, color = "black") +
-  scale_shape_manual(values = c("target" = 23, "within-list" = 22, "extra-list" = 21)) +  
-  scale_fill_manual(values = response_type_colors) +
-  scale_color_manual(values = response_type_colors) +
-  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  scale_shape_manual(values = c("within-list" = 22, "extra-list" = 21)) +  
+  scale_fill_manual(values = response_type_colors_filtered) +
+  scale_color_manual(values = response_type_colors_filtered) +
+  scale_y_continuous(limits = c(0, 0.5), breaks = seq(0, 0.5, 0.1)) +
   facet_wrap(~plot_label) +
   labs(
     x = "Condition",
@@ -73,6 +76,7 @@ plot_response_types = ggplot(summary_all_response_types, aes(
     axis.line = element_blank(),
     plot.background = element_rect(fill = "white", color = NA)
   )
+
 
 # ---- M3 Model ----
 
@@ -195,6 +199,7 @@ plot_estimates = ggplot(plot_summary, aes(x = condition, y = mean)) +
   geom_point(aes(fill = condition), shape = 23, size = 4, stroke = 1, color = "black") +
   facet_wrap(~param, scales = "fixed") +
   scale_fill_manual(values = condition_colors) +
+  scale_y_continuous(limits = c(0, NA)) +
   labs(
     x = "Condition",
     y = "Value"
@@ -224,7 +229,7 @@ for (name in names(all_plots)) {
   print(paste("Done:", file_name))
 
   ggsave(
-    filename = here("plots", file_name),
+    filename = here("plots/plot_include_cheaters", file_name),
     plot = all_plots[[name]],
     width = 8,
     height = 5,
