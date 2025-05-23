@@ -9,7 +9,6 @@ library(here)
 library(tidybayes)
 library(bridgesampling)
 library(logspline)
-#library(polspline)
 library(bayestestR)
 
 

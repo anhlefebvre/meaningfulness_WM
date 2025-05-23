@@ -82,7 +82,7 @@ plot_response_types = ggplot(summary_all_response_types, aes(
 p1 = ggplot(a_draws, aes(x = diff_real_scram_a)) + 
   geom_density(fill = blue_shades["real"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Real vs Scram") +
+  labs(title = "Real-world vs Scrambled") +
   theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -94,7 +94,7 @@ p1 = ggplot(a_draws, aes(x = diff_real_scram_a)) +
 p2 = ggplot(a_draws, aes(x = diff_real_artificial_a)) + 
   geom_density(fill = blue_shades["artificial"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Real vs Artificial") +
+  labs(title = "Real-world vs Artificial") +
   theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -106,7 +106,7 @@ p2 = ggplot(a_draws, aes(x = diff_real_artificial_a)) +
 p3 = ggplot(a_draws, aes(x = diff_artificial_scram_a)) + 
   geom_density(fill = blue_shades["scram"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(title = "Artificial vs Scram") +
+  labs(title = "Artificial vs Scrambled") +
   theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5),
