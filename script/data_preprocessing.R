@@ -7,6 +7,7 @@ library(here)
 get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off = 0.9, exclude_chance_performers = TRUE,
                          min_correct_chance = 13) {
   data = read_delim(data_path)
+  print(length(unique(data$participant_id)))
   
   all_main = data %>% filter(phase == "Main")
   n_all = n_distinct(all_main$participant_id)

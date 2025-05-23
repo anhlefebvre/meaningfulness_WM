@@ -40,7 +40,8 @@ get_p_response = function(main_data) {
 }
 
 ### Main ###
-main_data = get_main_data(data_path)
+main_data = get_main_data(data_path, exclude_potential_cheaters = FALSE)
+print(length(unique(main_data$participant_id)))
 
 
 ### Analysis
