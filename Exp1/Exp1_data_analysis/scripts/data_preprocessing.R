@@ -21,7 +21,7 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   n_after_initial_filter = n_distinct(data_main$participant_id)
   cat("Removed due to cheating or low seriousness:", n_all - n_after_initial_filter, "participants\n")
   
-  write_delim(data_main, here("data", "main_data_without_exclusion.txt"), delim = "\t")
+  #write_delim(data_main, here("data", "main_data_without_exclusion.txt"), delim = "\t")
   
   cleaned_data = data_main
   
@@ -43,7 +43,7 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
     print_alert = data_main %>%
       left_join(p_correct_per_participant, by = "participant_id") %>%
       mutate(alert_cheating = p_correct >= cut_off)
-    write_delim(print_alert, here("data", "alert_cheating.txt"), delim = "\t")
+    #write_delim(print_alert, here("data", "alert_cheating.txt"), delim = "\t")
   }
   
   if (exclude_chance_performers) {
@@ -68,12 +68,12 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   )
   cat("\nNumber of participants removed due to exclusion criteria:", length(total_removed), "\n")
   
-  write_delim(cleaned_data, here("data", "main_data_without_cheaters"), delim = "\t")
+  #write_delim(cleaned_data, here("data", "main_data_without_cheaters"), delim = "\t")
   
   return(cleaned_data)
 }
 
 
 ### Main ###
-data_path = here("data", "data_raw.txt")
+data_path = here("Exp1/Exp1_data", "data_raw.txt")
 main_data = get_main_data(data_path, exclude_potential_cheaters = FALSE)
