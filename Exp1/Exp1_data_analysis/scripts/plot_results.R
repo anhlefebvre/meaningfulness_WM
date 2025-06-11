@@ -229,7 +229,7 @@ for (name in names(all_plots)) {
   print(paste("Done:", file_name))
 
   ggsave(
-    filename = here("plots/plot_include_cheaters", file_name),
+    filename = here("Exp1/Exp1_data_analysis/plots/", file_name),
     plot = all_plots[[name]],
     width = 8,
     height = 5,

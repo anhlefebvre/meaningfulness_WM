@@ -45,6 +45,8 @@ print(length(unique(main_data$participant_id)))
 
 
 ### Analysis
+
+# P(correct)
 summary_p_correct = summarize_plot(
   .data = main_data,
   DV = correct,
@@ -81,92 +83,78 @@ m3_model = m3(
   choice_rule = "softmax",
   links = list(
     a = "log",
-    p = "logit"
+    c = "log"
   ),
   default_priors = list(
     a = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)"),
-    p = list(main = "logistic(0, 1)", effect = "logistic(0, 1)")
+    c = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)")
   )
 )
 
-m3_formula_correlation = bmf(
+#specify the model formula 
+m3_formula = bmf(
   target ~ b + a + c,
   within ~ b + a,
   extra  ~ b,
-  c ~ p*a,
-  a ~ 0 + cond + (0 + cond | id),
-  p ~ 0 + cond + (0 + cond | id)
+  c ~ 0 + cond + (0 + cond | id),  
+  a ~ 0 + cond + (0 + cond | id)
 )
 
+
 #fit the model
-model_path <- here("Exp1/Exp1_data_analysis/models", "m3_fit_correlation.rds")
-dir.create(dirname(model_path), showWarnings = FALSE, recursive = TRUE)
-#file.remove(model_path)
+m3_fit = bmm::bmm(
+  formula = m3_formula,
+  data = data_m3,
+  model = m3_model,
+  cores = 4,
+  chains = 4,
+  iter = 13500,
+  warmup = 1000,
+  init = 0,
+)
 
+summary(m3_fit)
 
-if (file.exists(model_path)) {
-  cat("Already computed, loading ", model_path, "\n")
-  m3_fit_correlation <- readRDS(model_path)
-} else {
-  cat("Fitting model\n")
-  m3_fit_correlation = bmm::bmm(
-    formula = m3_formula_correlation,
-    data = data_m3,
-    model = m3_model,
-    cores = 4,
-    iter = 2500,
-    warmup = 1000,
-    init = 1
-  )
-  saveRDS(m3_fit_correlation, model_path)
-  cat("Save the model:", model_path, "\n")
-}
-
-summary(m3_fit_correlation)
 #Transform back to exponential
-posterior_summary = as.data.frame(summary(m3_fit_correlation)$fixed)
+posterior_summary = as.data.frame(summary(m3_fit)$fixed)
 posterior_summary$Estimate_exp_scale = exp(posterior_summary$Estimate)
 posterior_summary$CI_low_exp = exp(posterior_summary$`l-95% CI`)
 posterior_summary$CI_high_exp = exp(posterior_summary$`u-95% CI`)
 
 #extract posterior sample + take relevant data and exponential_value
-posterior_sample_m3 <- gather_draws(m3_fit_correlation, `b_a_.*`, `b_p_.*`, regex = TRUE) %>%
-  mutate(
-    param = if_else(str_detect(.variable, "b_a_"), "a", "p"),
-    condition = str_remove_all(.variable, "b_[ap]_cond"),
-    .value = if_else(param == "a", exp(.value), plogis(.value))  # transform depending on link
-  )
+posterior_sample_m3 = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE) %>%
+  mutate(value_exponential = .value)
 
-### For item memory ###
+### For item memory ### 
 a_draws = posterior_sample_m3 %>%
-  filter(param == "a") %>%
-  select(.draw, .variable, .value) %>%
-  pivot_wider(names_from = .variable, values_from = .value)
+  filter(str_detect(.variable, "b_a_")) %>%
+  select(.draw, .variable, value_exponential) %>%
+  pivot_wider(names_from = .variable, values_from = value_exponential)
 
-# compute the posterior distribution of each pairwise difference
+# compute the posterior distribution of each pairwise difference 
 a_draws = a_draws %>%
   mutate(diff_real_scram_a = b_a_condreal - b_a_condscram,
          diff_real_artificial_a = b_a_condreal - b_a_condartificial,
          diff_artificial_scram_a = b_a_condartificial - b_a_condscram)
 
-# ### For binding memory ###
+### For binding memory ###
 c_draws = posterior_sample_m3 %>%
-  filter(str_detect(.variable, "b_p_")) %>%
-  select(.draw, .variable, .value) %>%
-  pivot_wider(names_from = .variable, values_from = .value)
+  filter(str_detect(.variable, "b_c_")) %>%
+  select(.draw, .variable, value_exponential) %>%
+  pivot_wider(names_from = .variable, values_from = value_exponential)
 
-# compute the posterior distribution of each pairwise difference
+# compute the posterior distribution of each pairwise difference 
 c_draws = c_draws %>%
-  mutate(diff_real_scram_c = b_p_condreal - b_p_condscram,
-         diff_real_artificial_c = b_p_condreal - b_p_condartificial,
-         diff_artificial_scram_c = b_p_condartificial - b_p_condscram)
+  mutate(diff_real_scram_c = b_c_condreal - b_c_condscram,
+         diff_real_artificial_c = b_c_condreal - b_c_condartificial,
+         diff_artificial_scram_c = b_c_condartificial - b_c_condscram)
 
-# # Compare both a-c
+# Compare both a-c
 plot_data = posterior_sample_m3 %>%
-  filter(str_detect(.variable, "b_a_") | str_detect(.variable, "b_p_")) %>%
+  filter(str_detect(.variable, "b_a_") | str_detect(.variable, "b_c_")) %>%
   mutate(
-    param = if_else(str_detect(.variable, "b_a_"), "a", "p"),
-    condition = str_remove(.variable, "b_[ap]_cond")
+    param = if_else(str_detect(.variable, "b_a_"), "a", "c"),
+    condition = str_remove(.variable, "b_[ac]_cond")
   )
 
 plot_summary = plot_data %>%
@@ -182,108 +170,45 @@ plot_summary = plot_data %>%
 # Prior density
 prior_density = dnorm(0, mean = 0, sd = sqrt(2) * 0.7)
 
-a_draws_log = gather_draws(m3_fit_correlation, `b_a_.*`, `b_p_.*`, regex = TRUE) %>%
+posterior_sample_m3_log = gather_draws(m3_fit, `b_a_.*`, `b_c_.*`, regex = TRUE)
+
+
+a_draws_log = posterior_sample_m3_log %>%
+  filter(str_detect(.variable, "b_a_")) %>%
   select(.draw, .variable, .value) %>%
-  pivot_wider(names_from = .variable, values_from = .value)%>%
+  pivot_wider(names_from = .variable, values_from = .value)
+
+a_draws_log_diff = a_draws_log %>%
   mutate(
-    real_scram_a = b_a_condreal - b_a_condscram,
-    real_artificial_a = b_a_condreal - b_a_condartificial,
-    artificial_scram_a = b_a_condartificial - b_a_condscram
+    real_scram = b_a_condreal - b_a_condscram,
+    real_artificial = b_a_condreal - b_a_condartificial,
+    artificial_scram = b_a_condartificial - b_a_condscram
   )
 
-pd_real_scram_a = dnorm(
-  0,
-  mean = mean(a_draws_log$real_scram_a, na.rm = TRUE),
-  sd = sd(a_draws_log$real_scram_a, na.rm = TRUE)
-)
+pd_real_scram_a = density_at(a_draws_log_diff$real_scram, 0, extend = TRUE)
+pd_real_artificial_a = density_at(a_draws_log_diff$real_artificial, 0, extend = TRUE)
+pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend = TRUE)
 
-pd_real_artificial_a = dnorm(
-  0,
-  mean = mean(a_draws_log$real_artificial_a, na.rm = TRUE),
-  sd = sd(a_draws_log$real_artificial_a, na.rm = TRUE)
-)
+BF_real_scram_a = prior_density / pd_real_scram_a
+BF_real_artificial_a = prior_density / pd_real_artificial_a
+BF_artificial_scram_a = prior_density / pd_artificial_scram_a
 
-pd_artificial_scram_a = dnorm(
-  0,
-  mean = mean(a_draws_log$artificial_scram_a, na.rm = TRUE),
-  sd = sd(a_draws_log$artificial_scram_a, na.rm = TRUE)
-)
-
-BF_real_scram_a = prior_density/pd_real_scram_a
-BF_real_artificial_a = prior_density/pd_real_artificial_a
-BF_artificial_scram_a = prior_density/pd_artificial_scram_a
-
-#posterior_sample_m3_log = gather_draws(m3_fit_correlation, `b_a_.*`, `b_p_.*`, regex = TRUE)
-
-# a_draws_log = posterior_sample_m3_log %>%
-#   filter(str_detect(.variable, "b_a_")) %>%
-#   select(.draw, .variable, .value) %>%
-#   pivot_wider(names_from = .variable, values_from = .value)
-# 
-# a_draws_log_diff = a_draws_log %>%
-#   mutate(
-#     real_scram = b_a_condreal - b_a_condscram,
-#     real_artificial = b_a_condreal - b_a_condartificial,
-#     artificial_scram = b_a_condartificial - b_a_condscram
-#   )
-
-# pd_real_scram_a = density_at(a_draws_log_diff$real_scram, 0, extend = TRUE)
-# pd_real_artificial_a = density_at(a_draws_log_diff$real_artificial, 0, extend = TRUE)
-# 
-# pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend = TRUE)
-# 
-# BF_real_scram_a = prior_density / pd_real_scram_a
-# BF_real_artificial_a = prior_density / pd_real_artificial_a
-# BF_artificial_scram_a = prior_density / pd_artificial_scram_a
-
-c_draws_log = gather_draws(m3_fit_correlation, `b_a_.*`, `b_p_.*`, regex = TRUE) %>%
+c_draws_log = posterior_sample_m3_log %>%
+  filter(str_detect(.variable, "b_c_")) %>%
   select(.draw, .variable, .value) %>%
-  pivot_wider(names_from = .variable, values_from = .value)%>%
+  pivot_wider(names_from = .variable, values_from = .value)
+
+c_draws_log_diff = c_draws_log %>%
   mutate(
-    real_scram_c = b_p_condreal - b_p_condscram,
-    real_artificial_c = b_p_condreal - b_p_condartificial,
-    artificial_scram_c = b_p_condartificial - b_p_condscram
+    real_scram = b_c_condreal - b_c_condscram,
+    real_artificial = b_c_condreal - b_c_condartificial,
+    artificial_scram = b_c_condartificial - b_c_condscram
   )
 
-pd_real_scram_c = dnorm(
-  0,
-  mean = mean(c_draws_log$real_scram_c, na.rm = TRUE),
-  sd = sd(c_draws_log$real_scram_c, na.rm = TRUE)
-)
+pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE)
+pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE)
+pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE)
 
-pd_real_artificial_c = dnorm(
-  0,
-  mean = mean(c_draws_log$real_artificial_c, na.rm = TRUE),
-  sd = sd(c_draws_log$real_artificial_c, na.rm = TRUE)
-)
-
-pd_artificial_scram_c = dnorm(
-  0,
-  mean = mean(c_draws_log$artificial_scram_c, na.rm = TRUE),
-  sd = sd(c_draws_log$artificial_scram_c, na.rm = TRUE)
-)
-
-BF_real_scram_c = prior_density/pd_real_scram_c
-BF_real_artificial_c = prior_density/pd_real_artificial_c
-BF_artificial_scram_c = prior_density/pd_artificial_scram_c
-
-
-# c_draws_log = posterior_sample_m3_log %>%
-#   filter(str_detect(.variable, "b_p_")) %>%
-#   select(.draw, .variable, .value) %>%
-#   pivot_wider(names_from = .variable, values_from = .value)
-#
-# c_draws_log_diff = c_draws_log %>%
-#   mutate(
-#     real_scram = b_p_condreal - b_p_condscram,
-#     real_artificial = b_p_condreal - b_p_condartificial,
-#     artificial_scram = b_p_condartificial - b_p_condscram
-#   )
-#
-# pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE)
-# pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE)
-# pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE)
-#
-# BF_real_scram_c = prior_density / pd_real_scram_c
-# BF_real_artificial_c = prior_density / pd_real_artificial_c
-# BF_artificial_scram_c = prior_density / pd_artificial_scram_c
+BF_real_scram_c = prior_density / pd_real_scram_c
+BF_real_artificial_c = prior_density / pd_real_artificial_c
+BF_artificial_scram_c = prior_density / pd_artificial_scram_c
