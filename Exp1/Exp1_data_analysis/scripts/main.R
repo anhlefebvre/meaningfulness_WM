@@ -185,9 +185,9 @@ a_draws_log_diff = a_draws_log %>%
     artificial_scram = b_a_condartificial - b_a_condscram
   )
 
-pd_real_scram_a = density_at(a_draws_log_diff$real_scram, 0, extend = TRUE)
-pd_real_artificial_a = density_at(a_draws_log_diff$real_artificial, 0, extend = TRUE)
-pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend = TRUE)
+pd_real_scram_a = density_at(a_draws_log_diff$real_scram, 0, extend = TRUE, extend_scale = 0.5)
+pd_real_artificial_a = density_at(a_draws_log_diff$real_artificial, 0, extend = TRUE, extend_scale = 0.5)
+pd_artificial_scram_a = density_at(a_draws_log_diff$artificial_scram, 0, extend = TRUE, extend_scale = 0.5)
 
 BF_real_scram_a = prior_density / pd_real_scram_a
 BF_real_artificial_a = prior_density / pd_real_artificial_a
@@ -205,9 +205,9 @@ c_draws_log_diff = c_draws_log %>%
     artificial_scram = b_c_condartificial - b_c_condscram
   )
 
-pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE)
-pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE)
-pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE)
+pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE, extend_scale = 0.5)
+pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE, extend_scale = 0.5)
+pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE, extend_scale = 0.5)
 
 BF_real_scram_c = prior_density / pd_real_scram_c
 BF_real_artificial_c = prior_density / pd_real_artificial_c
