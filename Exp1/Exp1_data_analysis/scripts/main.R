@@ -102,16 +102,28 @@ m3_formula = bmf(
 
 
 #fit the model
-m3_fit = bmm::bmm(
-  formula = m3_formula,
-  data = data_m3,
-  model = m3_model,
-  cores = 4,
-  chains = 4,
-  iter = 13500,
-  warmup = 1000,
-  init = 0,
-)
+model_path = here("Exp1/Exp1_data_analysis/models", "m3_fit_correlation.rds")
+dir.create(dirname(model_path), showWarnings = FALSE, recursive = TRUE)
+file.remove(model_path)
+
+if (file.exists(model_path)) {
+  cat("Already computed, loading ", model_path, "\n")
+  m3_fit = readRDS(model_path)
+} else {
+  cat("Fitting model\n")
+  m3_fit = bmm::bmm(
+    formula = m3_formula,
+    data = data_m3,
+    model = m3_model,
+    cores = 4,
+    chains = 4,
+    iter = 13500,
+    warmup = 1000,
+    init = 0,
+  )
+  saveRDS(m3_fit, model_path)
+  cat("Save the model:", model_path, "\n")
+}
 
 summary(m3_fit)
 
