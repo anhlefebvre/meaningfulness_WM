@@ -18,20 +18,10 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   data_main = data_main %>%
     filter(cheating == "no" & seriousness == "yes") %>%
     filter(condition %in% c("artificial", "scram", "real")) %>%
-    select(participant_id, phase, component_id, sender, sender_id, trial_number, condition,
-           probe_index, probe_location, probe_image,
-           selected_location_2AFC, selected_image_2AFC, selected_type_2AFC, correct_2AFC,
-           selected_location_6AFC, selected_index_6AFC, selected_image_6AFC, correct_6AFC, 
+    select(participant_id, phase, condition,
+           correct_2AFC,
+           correct_6AFC, 
            total_correct,
-           item0_index, item0_location, item0_image,
-           item1_index, item1_location, item1_image,
-           item2_index, item2_location, item2_image,
-           item3_index, item3_location, item3_image,
-           item4_index, item4_location, item4_image,
-           item5_index, item5_location, item5_image,
-           response0_location, response0_image, response0_type,
-           response1_location, response1_image, response1_type,
-           start_duration, fixation_duration, presentation_duration, retention_duration,
            warnings, cheating, seriousness)
   
   n_after_initial_filter = n_distinct(data_main$participant_id)
