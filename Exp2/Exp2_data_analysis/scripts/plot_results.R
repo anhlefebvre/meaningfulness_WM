@@ -77,7 +77,7 @@ plot_response_types = ggplot(summary_filtered, aes(
     plot.background = element_rect(fill = "white", color = NA)
   )
 
-#
+
 # # ---- M3 Model ----
 # 
 # 

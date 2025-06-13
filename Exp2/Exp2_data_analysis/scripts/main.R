@@ -21,9 +21,9 @@ source(here("Exp1/Exp1_data_analysis/scripts", "plot_summary_functions.R"))
 get_p_response= function(main_data) {
   main_data = main_data %>%
     mutate(
-      is_both    = if_else(total_correct == 2, 1, 0),
-      is_2AFC    = if_else(total_correct == 1, 1, 0),
-      is_none    = if_else(total_correct == 0, 1, 0)
+      is_both = if_else(total_correct == 2, 1, 0),
+      is_2AFC = if_else(total_correct == 1, 1, 0),
+      is_none = if_else(total_correct == 0, 1, 0)
     )
   
   p_both  = summarize_plot(main_data,DV = is_both, IV_within = condition, ID = participant_id, name_DV = "proportion")
@@ -56,45 +56,62 @@ summary_p_correct = summarize_plot(
   name_DV = "P(correct)"
 )
 
-# # Bayesian 
-# data_m3 = main_data %>%
-#   group_by(participant_id, condition) %>%
-#   summarise(
-#     target = sum(selected_type == "target"),
-#     within_list = sum(selected_type == "within_list"),
-#     extra_list = sum(selected_type == "extra_list"),
-#   ) %>%
-#   ungroup()
-# 
+# Bayesian
+data_m3 = main_data %>%
+  group_by(participant_id, condition) %>%
+  summarise(
+    both = sum(if_else(total_correct == 2, 1, 0)),
+    item = sum(if_else(total_correct == 1, 1, 0)),
+    none = sum(if_else(total_correct == 0, 1, 0))
+  ) %>%
+  ungroup() %>%
+  rename(
+    id = participant_id,
+    cond = condition
+  )
+
 # data_m3 = data_m3 %>%
 #   rename(
-#     target = target,
+#     is_both = target,
 #     within = within_list,
 #     extra = extra_list,
 #     id = participant_id,
 #     cond = condition
 #   )
-# 
-# #Initiate m3 model objects
-# m3_model = m3(
-#   resp_cats = c("target", "within", "extra"),
-#   num_options = c(1, 2, 3),
-#   choice_rule = "softmax",
-#   links = list(
-#     a = "log",
-#     c = "log"
-#   ),
-#   default_priors = list(
-#     a = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)"),
-#     c = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)")
-#   )
-# )
-# 
-# #specify the model formula 
-# m3_formula = bmf(
-#   target ~ b + a + c,
-#   within ~ b + a,
-#   extra  ~ b,
-#   c ~ 0 + cond + (0 + cond | id),  
-#   a ~ 0 + cond + (0 + cond | id)
-# )
+
+#Initiate m3 model objects
+m3_model = m3(
+  resp_cats = c("both", "item", "none"),
+  num_options = c(1, 5, 6),
+  choice_rule = "softmax",
+  links = list(
+    a = "log",
+    c = "log"
+  ),
+  default_priors = list(
+    a = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)"),
+    c = list(main = "normal(0, 0.7)", effect = "normal(0, 0.7)")
+  )
+)
+
+#specify the model formula
+m3_formula = bmf(
+  both ~ b + a + c,
+  item ~ b + a,
+  none  ~ b,
+  c ~ 0 + cond + (0 + cond | id),
+  a ~ 0 + cond + (0 + cond | id)
+)
+
+m3_fit = bmm::bmm(
+  formula = m3_formula,
+  data = data_m3,
+  model = m3_model,
+  cores = 4,
+  chains = 4,
+  iter = 13500,
+  warmup = 1000,
+  init = 0,
+)
+
+summary(m3_fit)
