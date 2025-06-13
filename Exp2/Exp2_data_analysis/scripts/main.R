@@ -47,6 +47,14 @@ main_data = get_main_data(data_path, exclude_potential_cheaters = FALSE)
 
 summary_all_response_types = get_p_response(main_data)
 
+#P(correct) - for the plot
+summary_p_correct = summarize_plot(
+  .data = main_data,
+  DV = if_else(total_correct == 2, 1, 0),
+  IV_within = condition,
+  ID = participant_id,
+  name_DV = "P(correct)"
+)
 
 # # Bayesian 
 # data_m3 = main_data %>%
