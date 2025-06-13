@@ -33,51 +33,51 @@ plot_p_correct = ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, 
     axis.line = element_blank(),
     plot.background = element_rect(fill = "white", color = NA)
   )
-# 
-# # ---- Plot 2: Response Types by Condition ----
-# summary_all_response_types$plot_label = "Proportion of Selected Response Types by Condition"
-# 
-# summary_filtered = summary_all_response_types %>%
-#   filter(selected_type %in% c("within-list", "extra-list"))
-# 
-# response_type_colors_filtered = c(
-#   "within-list" = "#2171B5",
-#   "extra-list" = "#D95F02"
-# )
-# 
-# plot_response_types = ggplot(summary_filtered, aes(
-#   x = condition,
-#   y = proportion,
-#   group = selected_type
-# )) +
-#   geom_point(aes(shape = selected_type, fill = selected_type),
-#              position = position_dodge(width = 0.4),
-#              size = 5, stroke = 1.2, color = "black") +
-#   scale_shape_manual(values = c("within-list" = 22, "extra-list" = 21)) +  
-#   scale_fill_manual(values = response_type_colors_filtered) +
-#   scale_color_manual(values = response_type_colors_filtered) +
-#   scale_y_continuous(limits = c(0, 0.5), breaks = seq(0, 0.5, 0.1)) +
-#   facet_wrap(~plot_label) +
-#   labs(
-#     x = "Condition",
-#     y = "Proportion",
-#     fill = "Response Type",
-#     shape = "Response Type",
-#     color = "Response Type"
-#   ) +
-#   theme_classic(base_size = 14) +
-#   theme(
-#     strip.background = element_rect(fill = "grey20"),
-#     strip.text = element_text(color = "white", size = 14, face = "bold", margin = margin(t = 10, b = 10)),
-#     legend.position = "bottom",               
-#     legend.text = element_text(size = 12),     
-#     legend.spacing.x = unit(0.4, 'cm'),        
-#     panel.border = element_rect(color = "grey", fill = NA, size = 1),
-#     axis.line = element_blank(),
-#     plot.background = element_rect(fill = "white", color = NA)
-#   )
 
-# 
+# ---- Plot 2: Response Types by Condition ----
+summary_all_response_types$plot_label = "Proportion of Selected Response Types by Condition"
+
+summary_filtered = summary_all_response_types %>%
+  filter(response_type %in% c("2AFC_correct", "none_correct"))
+
+response_type_colors_filtered = c(
+  "2AFC_correct" = "#2171B5",
+  "none_correct" = "#D95F02"
+)
+
+plot_response_types = ggplot(summary_filtered, aes(
+  x = condition,
+  y = proportion,
+  group = response_type
+)) +
+  geom_point(aes(shape = response_type, fill = response_type),
+             position = position_dodge(width = 0.4),
+             size = 5, stroke = 1.2, color = "black") +
+  scale_shape_manual(values = c("2AFC_correct" = 22, "none_correct" = 21)) +
+  scale_fill_manual(values = response_type_colors_filtered) +
+  scale_color_manual(values = response_type_colors_filtered) +
+  scale_y_continuous(limits = c(0, 0.5), breaks = seq(0, 0.5, 0.1)) +
+  facet_wrap(~plot_label) +
+  labs(
+    x = "Condition",
+    y = "Proportion",
+    fill = "Response Type",
+    shape = "Response Type",
+    color = "Response Type"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey20"),
+    strip.text = element_text(color = "white", size = 14, face = "bold", margin = margin(t = 10, b = 10)),
+    legend.position = "bottom",
+    legend.text = element_text(size = 12),
+    legend.spacing.x = unit(0.4, 'cm'),
+    panel.border = element_rect(color = "grey", fill = NA, size = 1),
+    axis.line = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+#
 # # ---- M3 Model ----
 # 
 # 
