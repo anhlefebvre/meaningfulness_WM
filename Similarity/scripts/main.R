@@ -4,6 +4,8 @@ library(brms)
 library("tidyverse")
 library(here)
 library(ggplot2)
+library(dplyr)
+library(brms)
 
 
 get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off = 0.9, exclude_chance_performers = TRUE,
@@ -116,4 +118,30 @@ for (cond in c("real", "artificial", "scram")) {
 }
 
 # test similarity between responses
+similarity_data = similarity_data %>%
+  rowwise() %>%
+  mutate(
+    all_similarities = list(c(
+      similarity_probed_response0,
+      similarity_probed_response1,
+      similarity_probed_response2,
+      similarity_probed_response3,
+      similarity_probed_response4,
+      similarity_probed_response5
+    ))
+  )
+
+similarity_data = similarity_data %>%
+  mutate(
+    responses_similarities = list(all_similarities[all_similarities != 0])
+  )
+
+similarity_data = similarity_data %>%
+  mutate(
+    mean_similarity_response = mean(unlist(responses_similarities), na.rm = TRUE),
+    max_similarity_response = max(unlist(responses_similarities), na.rm = TRUE),
+    min_similarity_response = min(unlist(responses_similarities), na.rm = TRUE),
+  ) %>%
+  ungroup()
+  
 
