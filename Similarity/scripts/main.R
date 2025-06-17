@@ -3,6 +3,8 @@ rm(list = ls())
 library(brms)
 library("tidyverse")
 library(here)
+library(ggplot2)
+
 
 get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off = 0.9, exclude_chance_performers = TRUE,
                          min_correct_chance = 13) {
@@ -14,7 +16,7 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   
   data_main = data %>%
     filter(cheating == "no" & seriousness == "yes") %>%
-    filter(condition %in% c("scram")) %>%
+    filter(condition %in% c("artificial", "real","scram")) %>%
     select(participant_id, phase, trial_number, condition, probe_image, selected_image, correct,
            item0_image, item1_image, item2_image, item3_image, item4_image, item5_image, 
            response0_image, response1_image, response2_image, response3_image, response4_image, response5_image
@@ -44,56 +46,74 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   return(cleaned_data)
 }
 
+similarity_lookup = function(similarity_data){
+  similarity_data %>%
+    mutate(pair = map2_chr(file1, file2, ~ paste(sort(c(.x, .y)), collapse = "_"))) %>%
+    select(pair, similarity) %>%
+    deframe()
+}
 
-### Main ###
+get_similarity_condition = function(condition){
+  data_name = switch(condition,
+                     "scram" = "similarities_scrambled_long.txt",
+                     "artificial" = "similarities_artificial_long.txt",
+                     "real" = "similarities_real_long.txt",
+                     stop("Invalid condition: must be 'scram', 'artificial', or 'real'"))
+  similarity_path = here("Similarity/CNN pairwise", data_name)
+  read_delim(similarity_path)
+}
+
+similarity_condition = list(
+  artificial = similarity_lookup(get_similarity_condition("artificial")),
+  real = similarity_lookup(get_similarity_condition("real")),
+  scram = similarity_lookup(get_similarity_condition("scram"))
+)
+
+get_similarity_score = function(condition, probe, selected) {
+  key = paste(sort(c(probe, selected)), collapse = "_")
+  sim_table = similarity_condition[[condition]]
+  return(sim_table[[key]] %||% NA)
+}
+
+### Main Exp 1 ###
 data_path = here("Exp1/Exp1_data", "data_raw.txt")
 main_data = get_main_data(data_path, exclude_potential_cheaters = FALSE)
-
-similarity_path = here("Similarity/CNN pairwise", "similarities_scrambled_long.txt")
-similarity_data = read_delim(similarity_path)%>%
-  mutate(pair_key = paste(file1, file2, sep="_"),
-         pair_key_rev = paste(file2, file1, sep="_"))
+similarity_data_path = here("Exp1/Exp1_data_analysis/models", "similarity_data.rds")
 
 
-### Lookup similarity for each item_image
-similarities_lookup = function(main_data, similarity_data, new_cols, prefix){
-  similarity_results = main_data %>%
-    pivot_longer(cols = all_of(new_cols),
-                 names_to = "slot", values_to = "compared_image") %>%
-    mutate(pair1 = paste(probe_image, compared_image, sep = "_"),
-           pair2 = paste(compared_image, probe_image, sep = "_"))
+if (file.exists(similarity_data_path)) {
+  similarity_data = readRDS(similarity_data_path)
+} else {
+  similarity_data = main_data %>%
+    rowwise() %>%
+    mutate(
+      similarity_probed_selected = get_similarity_score(condition, probe_image, selected_image),
+      similarity_probed_response0 = get_similarity_score(condition, probe_image, response0_image),
+      similarity_probed_response1 = get_similarity_score(condition, probe_image, response1_image),
+      similarity_probed_response2 = get_similarity_score(condition, probe_image, response2_image),
+      similarity_probed_response3 = get_similarity_score(condition, probe_image, response3_image),
+      similarity_probed_response4 = get_similarity_score(condition, probe_image, response4_image),
+      similarity_probed_response5 = get_similarity_score(condition, probe_image, response5_image)
+    ) %>%
+    ungroup()
   
-  similarity_results = similarity_results %>%
-    left_join(similarity_data %>% select(pair_key, similarity), by = c("pair1" = "pair_key")) %>%
-    rename(sim1 = similarity) %>%
-    left_join(similarity_data %>% select(pair_key_rev, similarity), by = c("pair2" = "pair_key_rev")) %>%
-    mutate(similarity = coalesce(sim1, similarity)) %>%
-    select(-pair1, -pair2, -sim1, -compared_image)
-  
-  similarity_results = similarity_results %>%
-    pivot_wider(names_from = slot, values_from = similarity, names_prefix = paste0("sim_", prefix, "_"))
-  
-  similarity_results = bind_cols(main_data, similarity_results %>% select(-participant_id, -trial_number))
-  return(similarity_results)
+  saveRDS(similarity_data, file = similarity_data_path)
+}  
+
+
+#test similarity between probed and selected items in incorrect trials
+test_probed_selected = function(main_data, cond) {
+  cat("Condition:", cond, "\n")
+  incorrect_data = main_data%>%
+    filter(condition == cond, correct == 0)
+  cat("Mean:", mean(incorrect_data$similarity_probed_selected, na.rm = TRUE), "\n")
+  test = t.test(incorrect_data$similarity_probed_selected, mu = 0, alternative = "greater")
+  print(test)
 }
 
-
-if (!exists("check_similarity_stimuli")) {
-  check_similarity_stimuli = similarities_lookup(
-    main_data,
-    similarity_data,
-    new_cols = paste0("item", 0:5, "_image"),
-    prefix = "item"
-  ) %>%
-    select(-starts_with("item"), -starts_with("response"))
+for (cond in c("real", "artificial", "scram")) {
+  test_probed_selected(similarity_data, cond)
 }
 
-if (!exists("check_similarity_response")) {
-  check_similarity_response = similarities_lookup(
-    main_data,
-    similarity_data,
-    new_cols = paste0("response", 0:5, "_image"),
-    prefix = "resp"
-  ) %>%
-    select(-starts_with("item"), -starts_with("response"))
-}
+# test similarity between responses
+
