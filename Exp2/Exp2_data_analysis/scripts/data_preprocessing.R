@@ -46,10 +46,35 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
     cat("No exclusion for chance performance was applied")
   }
   
+  if (exclude_potential_cheaters) {
+    p_correct_per_participant = data_main %>%
+      mutate(p_both = if_else(total_correct == 2, 1, 0)) %>%
+      group_by(participant_id) %>%
+      summarise(p_correct = mean(p_both), .groups = "drop")
+    
+    potential_cheater = p_correct_per_participant %>%
+      filter(p_correct >= cut_off) %>%
+      pull(participant_id)
+    
+    cat("Cheaters removed: \n")
+    print(potential_cheater)
+    
+    data_main = data_main %>%
+      filter(!(participant_id %in% potential_cheater))
+    
+    print_alert = data_main %>%
+      left_join(p_correct_per_participant, by = "participant_id") %>%
+      mutate(alert_cheating = p_correct >= cut_off)
+    #write_delim(print_alert, here("data", "alert_cheating.txt"), delim = "\t")
+  }
+  
+  total_removed = union(
+    if (exists("potential_cheater")) potential_cheater else character(0),
+    if (exists("chance_performers")) chance_performers else character(0)
+  )
+  
   cat("Total participants after cleaning ", n_distinct(data_main$participant_id))
 
-  #write_delim(cleaned_data, here("Exp2/data", "main_data_without_cheaters"), delim = "\t")
-  
   return(data_main)
 }
 
