@@ -104,7 +104,7 @@ m3_formula = bmf(
 #fit the model
 model_path = here("Exp1/Exp1_data_analysis/models", "m3_fit_correlation.rds")
 dir.create(dirname(model_path), showWarnings = FALSE, recursive = TRUE)
-file.remove(model_path)
+#file.remove(model_path)
 
 if (file.exists(model_path)) {
   cat("Already computed, loading ", model_path, "\n")
