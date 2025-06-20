@@ -50,7 +50,6 @@ get_main_data = function(data_path, exclude_potential_cheaters = TRUE, cut_off =
   return(cleaned_data)
 }
 
-# Load and prepare similarity data
 similarity_lookup = function(similarity_data) {
   similarity_data %>%
     mutate(pair = map2_chr(file1, file2, ~ paste(sort(c(.x, .y)), collapse = "_"))) %>%
