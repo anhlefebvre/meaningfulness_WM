@@ -7,9 +7,9 @@ library(stringr)
 # ---- Plot 1: Proportion Correct by Condition ----
 
 blue_shades = c(
-  "real" = "#08306B",
-  "artificial" = "#4292C6",
-  "scram" = "#C6DBEF"
+  "real" = "#1B9E77",        
+  "artificial" = "#2171B5",  
+  "scram" = "#D95F02"  
 )
 
 summary_p_correct$plot_label = "Proportion Correct by Condition"
@@ -194,9 +194,17 @@ condition_colors = c(
   "scram" = "#D95F02"
 )
 
-plot_estimates = ggplot(plot_summary, aes(x = condition, y = mean)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.1, color = "black") +
-  geom_point(aes(fill = condition), shape = 23, size = 4, stroke = 1, color = "black") +
+plot_estimates = ggplot()+
+  stat_halfeye(
+    data = plot_data,
+    aes(x = condition, y = exp(.value), fill = condition),
+    side = "left",
+    adjust = 0.7,
+    slab_alpha = 1,
+    slab_color = "black",
+    slab_linewidth = 0.4,
+    width = 0.6,
+  ) +
   facet_wrap(~param, scales = "fixed") +
   scale_fill_manual(values = condition_colors) +
   scale_y_continuous(limits = c(0, NA)) +
