@@ -3,13 +3,14 @@ library(here)
 library(patchwork)
 library(stringr)
 library(ggdist)
+library(dplyr)
 
 # ---- Plot 1: Proportion Correct by Condition ----
 
 blue_shades = c(
-  "real" = "#08306B",        
-  "artificial" = "#4292C6",  
-  "scram" = "#C6DBEF"        
+  "real" = "#1B9E77",        
+  "artificial" = "#2171B5",  
+  "scram" = "#D95F02"      
 )
 
 summary_p_correct$plot_label = "Proportion Correct by Condition"
@@ -41,8 +42,8 @@ summary_filtered = summary_all_response_types %>%
   filter(selected_type %in% c("within-list", "extra-list"))
 
 response_type_colors_filtered = c(
-  "within-list" = "#2171B5",
-  "extra-list" = "#D95F02"
+  "within-list" = "#D7301F",
+  "extra-list" = "#FC9272"
 )
 
 plot_response_types = ggplot(summary_filtered, aes(
@@ -50,14 +51,21 @@ plot_response_types = ggplot(summary_filtered, aes(
   y = proportion,
   group = selected_type
 )) +
+  geom_line(
+    data = summary_all_response_types,
+    aes(x = condition, y = proportion, group = selected_type, color = selected_type),
+    linewidth = 0.8,
+    alpha = 0.5,
+    position = position_dodge(width = 0.2)
+  )+
   geom_point(aes(shape = selected_type, fill = selected_type),
-             position = position_dodge(width = 0.4),
-             size = 5, stroke = 1.2, color = "black") +
+             position = position_dodge(width = 0.2),
+             size = 3, stroke = 0.5, color = "black") +
   scale_shape_manual(values = c("within-list" = 22, "extra-list" = 21)) +  
   scale_fill_manual(values = response_type_colors_filtered) +
   scale_color_manual(values = response_type_colors_filtered) +
   scale_y_continuous(limits = c(0, 0.5), breaks = seq(0, 0.5, 0.1)) +
-  facet_wrap(~plot_label) +
+  facet_wrap(~plot_label, scales = "fixed", nrow = 1) +
   labs(
     x = "Condition",
     y = "Proportion",
@@ -204,26 +212,8 @@ plot_estimates = ggplot() +
     slab_alpha = 1,
     slab_color = "black",
     slab_linewidth = 0.4,
-    width = 0.6
+    width = 0.6,
   ) +
-  #95%CI and mean
-  geom_linerange(
-    data = plot_summary,
-    aes(x = condition, ymin = lower, ymax = upper),
-    position = position_nudge(x = 0.15),
-    color = "black",
-    linewidth = 0.6
-  ) +
-  geom_point(
-    data = plot_summary,
-    aes(x = condition, y = mean, fill = condition),
-    shape = 21,
-    size = 3.5,
-    stroke = 0.8,
-    color = "black",
-    position = position_nudge(x = 0.15)
-  ) +
-  
   facet_wrap(~param, scales = "fixed") +
   scale_fill_manual(values = condition_colors) +
   scale_y_continuous(limits = c(0, NA)) +
