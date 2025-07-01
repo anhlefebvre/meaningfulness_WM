@@ -85,3 +85,4 @@ plot_summary = ggplot(plot_data, aes(x = condition, y = y, color = condition)) +
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
+
