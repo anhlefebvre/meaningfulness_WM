@@ -56,6 +56,30 @@ summary_p_correct = summarize_plot(
   name_DV = "P(correct)"
 )
 
+#P(correct) - 2AFC
+summary_p_correct_2AFC = summarize_plot(
+  .data = main_data,
+  DV = correct_2AFC,
+  IV_within = condition,
+  ID = participant_id,
+  name_DV = "P(correct)"
+)
+
+#P(correct) - 6AFC
+summary_p_correct_6AFC = summarize_plot(
+  .data = main_data,
+  DV = correct_6AFC,
+  IV_within = condition,
+  ID = participant_id,
+  name_DV = "P(correct)"
+)
+
+summary_p_correct$type = "Total Correct (Both)"
+summary_p_correct_2AFC$type = "2AFC Correct"
+
+summary_combined = bind_rows(summary_p_correct, summary_p_correct_2AFC)
+
+
 # Bayesian
 data_m3 = main_data %>%
   group_by(participant_id, condition) %>%

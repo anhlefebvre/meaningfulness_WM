@@ -2,7 +2,7 @@ library(ggplot2)
 library(here)
 library(patchwork)
 library(stringr)
-
+library(ggdist)
 
 # ---- Plot 1: Proportion Correct by Condition ----
 
@@ -243,4 +243,79 @@ for (name in names(all_plots)) {
     height = 5,
     dpi = 300
   )
+
 }
+
+# Plot 2
+summary_p_correct_2AFC$plot_label = "Proportion 2AFC Correct by Condition"
+ggplot(summary_p_correct_2AFC, aes(x = condition, y = `P(correct)`, fill = condition)) +
+  geom_col(width = 0.4, color = "black") +
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), width = 0.2) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  scale_fill_manual(values = blue_shades) +
+  facet_wrap(~plot_label) +
+  labs(
+    x = "Condition",
+    y = "P(correct)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey20"),
+    strip.text = element_text(color = "white", size = 14, face = "bold", margin = margin(t = 10, b = 10)),
+    legend.position = "none",
+    panel.border = element_rect(color = "grey", fill = NA, size = 1),
+    axis.line = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+plot_2AFC_6AFC = ggplot(summary_combined, aes(x = condition, y = `P(correct)`, fill = condition)) +
+  geom_col(width = 0.4, color = "black", position = position_dodge(width = 0.6)) +
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), width = 0.2, position = position_dodge(width = 0.6)) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  scale_fill_manual(values = blue_shades) +
+  facet_wrap(~type) +
+  labs(
+    x = "Condition",
+    y = "Proportion Correct"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey20"),
+    strip.text = element_text(color = "white", size = 14, face = "bold", margin = margin(t = 10, b = 10)),
+    legend.position = "none",
+    panel.border = element_rect(color = "grey", fill = NA, size = 1),
+    axis.line = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+ggplot(summary_combined, aes(x = condition, y = `P(correct)`, fill = type)) +
+  geom_col(
+    width = 0.4,
+    color = "black",
+    position = position_dodge(width = 0.5)
+  ) +
+  geom_errorbar(
+    aes(ymin = CI_low, ymax = CI_high),
+    width = 0.15,
+    position = position_dodge(width = 0.5)
+  ) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  scale_fill_manual(
+    values = c(
+      "Both Correct" = "#1B9E77",    
+      "2AFC Correct" = "#A6D9C2"     
+    )
+  ) +
+  labs(
+    x = "Condition",
+    y = "Proportion Correct",
+    fill = "Response Type"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 12),
+    panel.border = element_rect(color = "grey", fill = NA, size = 1),
+    axis.line = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
