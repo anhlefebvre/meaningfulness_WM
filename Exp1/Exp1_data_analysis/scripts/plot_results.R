@@ -5,15 +5,22 @@ library(stringr)
 library(ggdist)
 library(dplyr)
 
+condition_labels = c(
+  "real" = "Real-world",
+  "artificial" = "Artificial",
+  "scram" = "Scrambled"
+)
+
 # ---- Plot 1: Proportion Correct by Condition ----
 
 blue_shades = c(
-  "real" = "#1B9E77",        
-  "artificial" = "#2171B5",  
-  "scram" = "#D95F02"      
+  "Real-world" = "#1B9E77",        
+  "Artificial" = "#2171B5",  
+  "Scrambled" = "#D95F02"  
 )
 
 summary_p_correct$plot_label = "Proportion Correct by Condition"
+summary_p_correct$condition = factor(summary_p_correct$condition, levels = names(condition_labels), labels = condition_labels)
 
 plot_p_correct = ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, fill = condition)) +
   geom_col(width = 0.4, color = "black") +
@@ -37,6 +44,7 @@ plot_p_correct = ggplot(summary_p_correct, aes(x = condition, y = `P(correct)`, 
 
 # ---- Plot 2: Response Types by Condition ----
 summary_all_response_types$plot_label = "Proportion of Selected Response Types by Condition"
+summary_all_response_types$condition = factor(summary_all_response_types$condition, levels = names(condition_labels), labels = condition_labels)
 
 summary_filtered = summary_all_response_types %>%
   filter(selected_type %in% c("within-list", "extra-list"))
@@ -92,7 +100,7 @@ plot_response_types = ggplot(summary_filtered, aes(
 # ---- Plot Posterior Distributions for a ----
 
 p1 = ggplot(a_draws, aes(x = diff_real_scram_a)) + 
-  geom_density(fill = blue_shades["real"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Real-world"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Real-world vs Scrambled") +
   theme_classic() +
@@ -104,7 +112,7 @@ p1 = ggplot(a_draws, aes(x = diff_real_scram_a)) +
   )
 
 p2 = ggplot(a_draws, aes(x = diff_real_artificial_a)) + 
-  geom_density(fill = blue_shades["artificial"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Artificial"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Real-world vs Artificial") +
   theme_classic() +
@@ -116,7 +124,7 @@ p2 = ggplot(a_draws, aes(x = diff_real_artificial_a)) +
   )
 
 p3 = ggplot(a_draws, aes(x = diff_artificial_scram_a)) + 
-  geom_density(fill = blue_shades["scram"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Scrambled"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Artificial vs Scrambled") +
   theme_classic() +
@@ -145,7 +153,7 @@ plot_item_memory = (title_element / (p1 | p2 | p3)) +
 # ---- Plot Posterior Distributions for c ----
 
 p1 = ggplot(c_draws, aes(x = diff_real_scram_c)) + 
-  geom_density(fill = blue_shades["real"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Real-world"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Real-world vs Scrambled") +
   theme_classic() +
@@ -157,7 +165,7 @@ p1 = ggplot(c_draws, aes(x = diff_real_scram_c)) +
   )
 
 p2 = ggplot(c_draws, aes(x = diff_real_artificial_c)) + 
-  geom_density(fill = blue_shades["artificial"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Artificial"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Real-world vs Artificial") +
   theme_classic() +
@@ -169,7 +177,7 @@ p2 = ggplot(c_draws, aes(x = diff_real_artificial_c)) +
   )
 
 p3 = ggplot(c_draws, aes(x = diff_artificial_scram_c)) + 
-  geom_density(fill = blue_shades["scram"], alpha = 0.8) + 
+  geom_density(fill = blue_shades["Scrambled"], alpha = 0.8) + 
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(title = "Artificial vs Scrambled") +
   theme_classic() +
@@ -196,11 +204,14 @@ plot_binding_memory = (title_element / (p1 | p2 | p3)) +
 
 
 # ---- Estimates a - c ----
+
 condition_colors = c(
-  "real" = "#1B9E77",        
-  "artificial" = "#2171B5",  
-  "scram" = "#D95F02"       
+  "Real-world" = "#1B9E77",        
+  "Artificial" = "#2171B5",  
+  "Scrambled" = "#D95F02"  
 )
+
+plot_data$condition = factor(plot_data$condition, levels = names(condition_labels), labels = condition_labels)
 
 plot_estimates = ggplot() +
   #Posterior distribution
@@ -238,9 +249,9 @@ all_plots = list(
 
 for (name in names(all_plots)) {
   file_name = paste0(str_replace_all(tolower(name), "[^a-z0-9]+", "_"), ".png")
-
+  
   print(paste("Done:", file_name))
-
+  
   ggsave(
     filename = here("Exp1/Exp1_data_analysis/plots/", file_name),
     plot = all_plots[[name]],
