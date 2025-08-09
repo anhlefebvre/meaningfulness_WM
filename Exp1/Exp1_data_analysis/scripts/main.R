@@ -217,69 +217,73 @@ c_draws_log_diff = c_draws_log %>%
     artificial_scram = b_c_condartificial - b_c_condscram
   )
 
-pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE, extend_scale = 0.5)
-pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE, extend_scale = 0.5)
-pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE, extend_scale = 0.5)
+pd_real_scram_c = density_at(c_draws_log_diff$real_scram, 0, extend = TRUE, extend_scale = 1.5)
+pd_real_artificial_c = density_at(c_draws_log_diff$real_artificial, 0, extend = TRUE, extend_scale = 1.5)
+pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend = TRUE, extend_scale = 1.5)
 
 BF_real_scram_c = prior_density / pd_real_scram_c
 BF_real_artificial_c = prior_density / pd_real_artificial_c
 BF_artificial_scram_c = prior_density / pd_artificial_scram_c
+#BF_real_scram = dnorm(0, mean = 0, sd = 1) / dnorm(0, mean = mean(c_draws_log_diff$real_scram), sd = sd(c_draws_log_diff$real_scram))
 
-#--- Testing
-accuracy_data = main_data %>%
-  group_by(participant_id, condition) %>%
-  summarise(
-    correct = sum(correct),
-    total = n(),
-    .groups = "drop"
+# BF for accuracy part
+accuracy_path = here("Exp1/Exp1_data_analysis/models", "accuracy_model.rds")
+dir.create(dirname(accuracy_path), showWarnings = FALSE, recursive = TRUE)
+
+if (file.exists(accuracy_path)) {
+  cat("Already computed, loading ", accuracy_path, "\n")
+  accuracy_model = readRDS(accuracy_path)
+} else {
+  cat("Run the model\n")
+  accuracy_model = brm(
+    correct ~ 0 + condition + (0 + condition | participant_id),
+    data = main_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "b"),
+      prior(exponential(1), class = "sd") 
+    ),
+    chains = 4,
+    cores = 4,
+    iter = 13500,
+    warmup = 1000
+  )
+  
+  saveRDS(accuracy_model, accuracy_path)
+  cat("Save the model:", accuracy_path, "\n")
+}
+
+summary(accuracy_model)
+
+posterior_accuracy = as_draws_df(accuracy_model)
+
+posterior_accuracy = posterior_accuracy%>%
+  mutate(
+    diff_real_scram = b_conditionreal - b_conditionscram,
+    diff_real_artificial = b_conditionreal - b_conditionartificial,
+    diff_artificial_scram = b_conditionartificial - b_conditionscram
   )
 
-accuracy_data$condition = factor(accuracy_data$condition)
-accuracy_data$condition = relevel(accuracy_data$condition, ref = "real")
+prior_density_accuracy = dnorm(0, mean = 0, sd = sqrt(2) * 0.7)
 
-correct_H1= brm(
-  correct | trials(total) ~ condition,
-  data = accuracy_data,
-  family = binomial(),
-  prior = c(set_prior("normal(0, 1)", class = "b")),
-  iter = 13500,
-  warmup = 1000,
-  chains = 4,
-  cores = 4,
-  seed = 123,
-  save_pars = save_pars(all = TRUE)
+pd_real_scram_accuracy = dnorm(
+  0,
+  mean = mean(posterior_accuracy$diff_real_scram),
+  sd = sd(posterior_accuracy$diff_real_scram)
+)
+pd_real_artificial_accuracy = dnorm(
+  0,
+  mean = mean(posterior_accuracy$diff_real_artificial),
+  sd = sd(posterior_accuracy$diff_real_artificial)
 )
 
-correct_H0 = brm(
-  correct | trials(total) ~ 1,
-  data = accuracy_data,
-  family = binomial(),
-  prior = c(set_prior("normal(0, 1)", class = "Intercept")),
-  iter = 13500,
-  warmup = 1000,
-  chains = 4,
-  cores = 4,
-  seed = 123,
-  save_pars = save_pars(all = TRUE)
+pd_artificial_scram_accuracy = dnorm(
+  0,
+  mean = mean(posterior_accuracy$diff_artificial_scram),
+  sd = sd(posterior_accuracy$diff_artificial_scram)
 )
 
-bridge_H1 = bridge_sampler(correct_H1)
-bridge_H0 = bridge_sampler(correct_H0)
+BF_real_scram_accuracy = prior_density_accuracy/pd_real_scram_accuracy
+BF_real_artificial_accuracy = prior_density_accuracy/pd_real_artificial_accuracy
+BF_artificial_scram_accuracy = prior_density_accuracy/pd_artificial_scram_accuracy
 
-BF_accuracy = bf(bridge_H1, bridge_H0)
-print(BF_accuracy)
-
-scram_real = hypothesis(correct_H1, "conditionscram < 0")
-print(scram_real)
-
-artificial_real = hypothesis(correct_H1, "conditionartificial < 0")
-print(artificial_real)
-
-### test another way
-draws <- as_draws_df(correct_H1)
-posterior_diff <- draws$b_conditionscram
-posterior_fit <- logspline(posterior_diff)
-posterior_density <- dlogspline(0, posterior_fit)
-prior_density <- dnorm(0, mean = 0, sd = 1)
-BF_manual_scram_real <- prior_density / posterior_density
-print(BF_manual_scram_real)
