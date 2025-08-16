@@ -287,8 +287,71 @@ BF_real_scram_accuracy = prior_density_accuracy/pd_real_scram_accuracy
 BF_real_artificial_accuracy = prior_density_accuracy/pd_real_artificial_accuracy
 BF_artificial_scram_accuracy = prior_density_accuracy/pd_artificial_scram_accuracy
 
+##BF accuracy in general:
+# file.remove(here("Exp1/Exp1_data_analysis/models", "H1_accuracy_model.rds"))
+# file.remove(here("Exp1/Exp1_data_analysis/models", "H0_accuracy_model.rds"))
+# file.remove(here("Exp1/Exp1_data_analysis/models", "BF_H1_vs_H0.rds"))
+
+H1_path = here("Exp1/Exp1_data_analysis/models", "H1_accuracy_model.rds") 
+H0_path = here("Exp1/Exp1_data_analysis/models", "H0_accuracy_model.rds") 
+BF_path = here("Exp1/Exp1_data_analysis/models", "BF_H1_vs_H0.rds") 
+
+if (file.exists(H1_path)) { 
+  cat("Already computed, loading ", H1_path, "\n") 
+  H1_model = readRDS(H1_path) 
+} else { 
+  cat("Fitting H1 model\n") 
+  H1_model = brm( 
+    correct ~ 0 + condition + (0 + condition | participant_id), 
+    data = main_data, 
+    family = bernoulli(), 
+    prior = c( prior(normal(0, 0.7), class = "b"), prior(exponential(1), class = "sd") ), 
+    chains = 4, 
+    cores = 4, 
+    iter = 13500, 
+    warmup = 1000, 
+    save_pars = save_pars(all = TRUE) 
+  ) 
+  saveRDS(H1_model, H1_path) 
+} 
+
+if (file.exists(H0_path)) { 
+  cat("Already computed, loading ", H0_path, "\n") 
+  H0_model = readRDS(H0_path) 
+} else { 
+  cat("Fitting H0 model\n") 
+  H0_model = brm( 
+    correct ~ 1 + (1 | participant_id), 
+    data = main_data, 
+    family = bernoulli(), 
+    prior = c( prior(normal(0, 0.7), class = "Intercept"), prior(exponential(1), class = "sd") ), 
+    chains = 4, 
+    cores = 4, 
+    iter = 13500, 
+    warmup = 1000, 
+    save_pars = save_pars(all = TRUE) 
+  ) 
+  saveRDS(H0_model, H0_path) 
+} 
+
+if (file.exists(BF_path)) { 
+  cat("Already computed, loading ", BF_path, "\n") 
+  BF_10 = readRDS(BF_path) 
+} else { 
+  cat("Computing Bayes factor with bridge sampling\n") 
+  bridge_H1 = bridge_sampler(H1_model) 
+  bridge_H0 = bridge_sampler(H0_model) 
+  BF_10 = bf(bridge_H1, bridge_H0) 
+  saveRDS(BF_10, BF_path) 
+} 
+
+print(BF_10)
 
 # BF for accuracy part - difference in error types
+err_data = main_data %>% 
+  filter(selected_type != "target") %>% 
+  mutate(err_is_within = as.integer(selected_type == "within_list"))
+
 H1_err_path = here("Exp1/Exp1_data_analysis/models", "H1_error_type_model.rds")
 H0_err_path = here("Exp1/Exp1_data_analysis/models", "H0_error_type_model.rds")
 BF_err_path = here("Exp1/Exp1_data_analysis/models", "BF_error_type_H1_vs_H0.rds")
