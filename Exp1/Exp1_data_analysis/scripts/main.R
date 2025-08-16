@@ -287,3 +287,126 @@ BF_real_scram_accuracy = prior_density_accuracy/pd_real_scram_accuracy
 BF_real_artificial_accuracy = prior_density_accuracy/pd_real_artificial_accuracy
 BF_artificial_scram_accuracy = prior_density_accuracy/pd_artificial_scram_accuracy
 
+
+# BF for accuracy part - difference in error types
+H1_err_path = here("Exp1/Exp1_data_analysis/models", "H1_error_type_model.rds")
+H0_err_path = here("Exp1/Exp1_data_analysis/models", "H0_error_type_model.rds")
+BF_err_path = here("Exp1/Exp1_data_analysis/models", "BF_error_type_H1_vs_H0.rds")
+
+# H1
+if (file.exists(H1_err_path)) {
+  cat("Already computed, loading ", H1_err_path, "\n")
+  H1_err = readRDS(H1_err_path)
+} else {
+  cat("Fitting H1 error-type model\n")
+  H1_err = brm(
+    err_is_within ~ 0 + condition + (0 + condition | participant_id),
+    data = err_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "b"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H1_err, H1_err_path)
+}
+
+# H0
+if (file.exists(H0_err_path)) {
+  cat("Already computed, loading ", H0_err_path, "\n")
+  H0_err = readRDS(H0_err_path)
+} else {
+  cat("Fitting H0 error-type model\n")
+  H0_err = brm(
+    err_is_within ~ 1 + (1 | participant_id),
+    data = err_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "Intercept"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H0_err, H0_err_path)
+}
+
+if (file.exists(BF_err_path)) {
+  cat("Already computed, loading ", BF_err_path, "\n")
+  BF_err_10 = readRDS(BF_err_path)
+} else {
+  cat("Computing BF for error-type models\n")
+  br_H1 = bridge_sampler(H1_err)
+  br_H0 = bridge_sampler(H0_err)
+  BF_err_10 = bf(br_H1, br_H0) 
+  saveRDS(BF_err_10, BF_err_path)
+}
+print(BF_err_10)
+
+### Test BF for different responses across conditions
+error_data = main_data %>%
+  filter(selected_type != "target") %>%
+  mutate(err_is_within = as.integer(selected_type == "within_list"))
+
+H1_err = brm(
+  err_is_within ~ 0 + condition + (0 + condition | participant_id),
+  data = error_data,
+  family = bernoulli(),
+  prior = c(
+    prior(normal(0, 0.7), class = "b"),
+    prior(exponential(1), class = "sd")
+  ),
+  chains = 4, cores = 4, iter = 13500, warmup = 1000,
+  save_pars = save_pars(all = TRUE)
+)
+
+H0_err = brm(
+  err_is_within ~ 1 + (1 | participant_id),
+  data = error_data,
+  family = bernoulli(),
+  prior = c(
+    prior(normal(0, 0.7), class = "Intercept"),
+    prior(exponential(1), class = "sd")
+  ),
+  chains = 4, cores = 4, iter = 13500, warmup = 1000,
+  save_pars = save_pars(all = TRUE)
+)
+
+bridge_H1 = bridge_sampler(H1_err)
+bridge_H0 = bridge_sampler(H0_err)
+BF_error_global = bf(bridge_H1, bridge_H0)
+
+print(BF_error_global)
+
+posterior_error = as_draws_df(H1_err)
+
+posterior_error = posterior_error %>%
+  mutate(
+    diff_real_scram = b_conditionreal - b_conditionscram,
+    diff_real_artificial = b_conditionreal - b_conditionartificial,
+    diff_artificial_scram = b_conditionartificial - b_conditionscram
+  )
+
+prior_density_error = dnorm(0, mean = 0, sd = sqrt(2) * 0.7)
+
+pd_real_scram_error = dnorm(
+  0,
+  mean = mean(posterior_error$diff_real_scram),
+  sd = sd(posterior_error$diff_real_scram)
+)
+pd_real_artificial_error = dnorm(
+  0,
+  mean = mean(posterior_error$diff_real_artificial),
+  sd = sd(posterior_error$diff_real_artificial)
+)
+pd_artificial_scram_error = dnorm(
+  0,
+  mean = mean(posterior_error$diff_artificial_scram),
+  sd = sd(posterior_error$diff_artificial_scram)
+)
+
+BF_real_scram_error = prior_density_error / pd_real_scram_error
+BF_real_artificial_error = prior_density_error / pd_real_artificial_error
+BF_artificial_scram_error = prior_density_error / pd_artificial_scram_error
