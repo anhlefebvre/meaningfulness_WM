@@ -309,6 +309,61 @@ BF_real_scram_accuracy_2AFC      = prior_density / pd_real_scram_2AFC
 BF_real_artificial_accuracy_2AFC = prior_density / pd_real_artificial_2AFC
 BF_artificial_scram_accuracy_2AFC = prior_density / pd_artificial_scram_2AFC
 
+###Acuracy different across conditions - 2AFC
+H1_2AFC_path = here("Exp2/Exp2_data_analysis/models", "H1_accuracy_2AFC_model.rds")
+H0_2AFC_path = here("Exp2/Exp2_data_analysis/models", "H0_accuracy_2AFC_model.rds")
+BF_2AFC_path = here("Exp2/Exp2_data_analysis/models", "BF_2AFC_H1_vs_H0.rds")
+dir.create(dirname(H1_2AFC_path), showWarnings = FALSE, recursive = TRUE)
+
+if (file.exists(H1_2AFC_path)) {
+  cat("Already computed, loading ", H1_2AFC_path, "\n")
+  H1_2AFC = readRDS(H1_2AFC_path)
+} else {
+  cat("Fitting H1 2AFC model\n")
+  H1_2AFC = brm(
+    correct_2AFC ~ 0 + condition + (0 + condition | participant_id),
+    data = main_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "b"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H1_2AFC, H1_2AFC_path)
+}
+
+if (file.exists(H0_2AFC_path)) {
+  cat("Already computed, loading ", H0_2AFC_path, "\n")
+  H0_2AFC = readRDS(H0_2AFC_path)
+} else {
+  cat("Fitting H0 2AFC model\n")
+  H0_2AFC = brm(
+    correct_2AFC ~ 1 + (1 | participant_id),
+    data = main_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "Intercept"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H0_2AFC, H0_2AFC_path)
+}
+
+if (file.exists(BF_2AFC_path)) {
+  cat("Already computed, loading ", BF_2AFC_path, "\n")
+  BF_2AFC_10 = readRDS(BF_2AFC_path)
+} else {
+  cat("Computing bridge-sampling BF for 2AFC models\n")
+  bridge_H1_2AFC = bridge_sampler(H1_2AFC)
+  bridge_H0_2AFC = bridge_sampler(H0_2AFC)
+  BF_2AFC_10 = bf(bridge_H1_2AFC, bridge_H0_2AFC)
+  saveRDS(BF_2AFC_10, BF_2AFC_path)
+}
+
 ### Total
 
 accuracy_total_path = here("Exp2/Exp2_data_analysis/models", "accuracy_total_model.rds")
@@ -363,3 +418,66 @@ pd_artificial_scram_total = dnorm(
 BF_real_scram_accuracy_total = prior_density / pd_real_scram_total
 BF_real_artificial_accuracy_total = prior_density / pd_real_artificial_total
 BF_artificial_scram_accuracy_total = prior_density / pd_artificial_scram_total
+
+### total - difference across conditions
+H1_total_path = here("Exp2/Exp2_data_analysis/models", "H1_accuracy_total_model.rds")
+H0_total_path = here("Exp2/Exp2_data_analysis/models", "H0_accuracy_total_model.rds")
+BF_total_path = here("Exp2/Exp2_data_analysis/models", "BF_total_H1_vs_H0.rds")
+dir.create(dirname(H1_total_path), showWarnings = FALSE, recursive = TRUE)
+
+if (file.exists(H1_total_path)) {
+  cat("Already computed, loading ", H1_total_path, "\n")
+  H1_total = readRDS(H1_total_path)
+} else {
+  cat("Fitting H1 total model\n")
+  H1_total = brm(
+    formula = brms::bf(
+      total_correct | trials(2) ~ 0 + condition + (0 + condition | participant_id)
+    ),
+    data = main_data,
+    family = binomial(),
+    prior = c(
+      prior(normal(0, 0.7), class = "b"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H1_total, H1_total_path)
+}
+
+if (file.exists(H0_total_path)) {
+  cat("Already computed, loading ", H0_total_path, "\n")
+  H0_total = readRDS(H0_total_path)
+} else {
+  cat("Fitting H0 total model\n")
+  H0_total = brm(
+    formula = brms::bf(
+      total_correct | trials(2) ~ 1 + (1 | participant_id)
+    ),
+    data = main_data,
+    family = binomial(),
+    prior = c(
+      prior(normal(0, 0.7), class = "Intercept"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4, cores = 4, iter = 13500, warmup = 1000,
+    save_pars = save_pars(all = TRUE)
+  )
+  saveRDS(H0_total, H0_total_path)
+}
+
+if (file.exists(BF_total_path)) {
+  cat("Already computed, loading ", BF_total_path, "\n")
+  BF_total_10 = readRDS(BF_total_path)
+} else {
+  cat("Computing bridge-sampling BF for TOTAL models\n")
+  br_H1_total = bridge_sampler(H1_total)
+  br_H0_total = bridge_sampler(H0_total)
+  BF_total_10 = bf(br_H1_total, br_H0_total)  
+  saveRDS(BF_total_10, BF_total_path)
+}
+
+print(BF_total_10)
+
+
