@@ -249,3 +249,117 @@ pd_artificial_scram_c = density_at(c_draws_log_diff$artificial_scram, 0, extend 
 BF_real_scram_c = prior_density / pd_real_scram_c
 BF_real_artificial_c = prior_density / pd_real_artificial_c
 BF_artificial_scram_c = prior_density / pd_artificial_scram_c
+
+### Accuracy
+
+#2AFC
+accuracy_2AFC_path = here("Exp2/Exp2_data_analysis/models", "accuracy_2AFC_model.rds")
+dir.create(dirname(accuracy_2AFC_path), showWarnings = FALSE, recursive = TRUE)
+
+if (file.exists(accuracy_2AFC_path)) {
+  cat("Already computed, loading ", accuracy_2AFC_path, "\n")
+  accuracy_2AFC_model = readRDS(accuracy_2AFC_path)
+} else {
+  cat("Run 2AFC model")
+  accuracy_2AFC_model = brm(
+    correct_2AFC ~ 0 + condition + (0 + condition | participant_id),
+    data = main_data,
+    family = bernoulli(),
+    prior = c(
+      prior(normal(0, 0.7), class = "b"),
+      prior(exponential(1), class = "sd")
+    ),
+    chains = 4,
+    cores = 4,
+    iter = 13500,
+    warmup = 1000
+  )
+  saveRDS(accuracy_2AFC_model, accuracy_2AFC_path)
+  cat("Save the model: ", accuracy_2AFC_path, "\n")
+}
+
+summary(accuracy_2AFC_model)
+
+pd_2AFC = as_draws_df(accuracy_2AFC_model) %>%
+  mutate(
+    diff_real_scram_2AFC      = b_conditionreal - b_conditionscram,
+    diff_real_artificial_2AFC = b_conditionreal - b_conditionartificial,
+    diff_artificial_scram_2AFC = b_conditionartificial - b_conditionscram
+  )
+
+prior_density = dnorm(0, mean = 0, sd = sqrt(2) * 0.7)
+
+pd_real_scram_2AFC = dnorm(
+  0,
+  mean = mean(pd_2AFC$diff_real_scram_2AFC),
+  sd   = sd(pd_2AFC$diff_real_scram_2AFC)
+)
+pd_real_artificial_2AFC = dnorm(
+  0,
+  mean = mean(pd_2AFC$diff_real_artificial_2AFC),
+  sd   = sd(pd_2AFC$diff_real_artificial_2AFC)
+)
+pd_artificial_scram_2AFC = dnorm(
+  0,
+  mean = mean(pd_2AFC$diff_artificial_scram_2AFC),
+  sd   = sd(pd_2AFC$diff_artificial_scram_2AFC)
+)
+
+BF_real_scram_accuracy_2AFC      = prior_density / pd_real_scram_2AFC
+BF_real_artificial_accuracy_2AFC = prior_density / pd_real_artificial_2AFC
+BF_artificial_scram_accuracy_2AFC = prior_density / pd_artificial_scram_2AFC
+
+### Total
+
+accuracy_total_path = here("Exp2/Exp2_data_analysis/models", "accuracy_total_model.rds")
+dir.create(dirname(accuracy_total_path), showWarnings = FALSE, recursive = TRUE)
+
+if (file.exists(accuracy_total_path)) {
+  cat("Already have it, loading ", accuracy_total_path, "\n")
+  accuracy_total_model = readRDS(accuracy_total_path)
+} else {
+  cat("Run the model\n")
+  accuracy_total_model = brm( 
+    formula = brms::bf(
+      total_correct | trials(2) ~ 0 + condition + (0 + condition | participant_id)
+    ), 
+    data = main_data, 
+    family = binomial(), 
+    prior = c( prior(normal(0, 0.7), class = "b"), prior(exponential(1), class = "sd") ), 
+    chains = 4, 
+    cores = 4, 
+    iter = 13500, 
+    warmup = 1000 
+  )
+  saveRDS(accuracy_total_model, accuracy_total_path)
+  cat("Save the model: ", accuracy_total_path, "\n")
+}
+
+summary(accuracy_total_model)
+
+pd_total = as_draws_df(accuracy_total_model) %>%
+  mutate(
+    diff_real_scram_total = b_conditionreal - b_conditionscram,
+    diff_real_artificial_total = b_conditionreal - b_conditionartificial,
+    diff_artificial_scram_total = b_conditionartificial - b_conditionscram
+  )
+
+pd_real_scram_total = dnorm(
+  0,
+  mean = mean(pd_total$diff_real_scram_total),
+  sd = sd(pd_total$diff_real_scram_total)
+)
+pd_real_artificial_total = dnorm(
+  0,
+  mean = mean(pd_total$diff_real_artificial_total),
+  sd = sd(pd_total$diff_real_artificial_total)
+)
+pd_artificial_scram_total = dnorm(
+  0,
+  mean = mean(pd_total$diff_artificial_scram_total),
+  sd = sd(pd_total$diff_artificial_scram_total)
+)
+
+BF_real_scram_accuracy_total = prior_density / pd_real_scram_total
+BF_real_artificial_accuracy_total = prior_density / pd_real_artificial_total
+BF_artificial_scram_accuracy_total = prior_density / pd_artificial_scram_total
