@@ -409,40 +409,6 @@ if (file.exists(BF_err_path)) {
 print(BF_err_10)
 
 ### Test BF for different responses across conditions
-error_data = main_data %>%
-  filter(selected_type != "target") %>%
-  mutate(err_is_within = as.integer(selected_type == "within_list"))
-
-H1_err = brm(
-  err_is_within ~ 0 + condition + (0 + condition | participant_id),
-  data = error_data,
-  family = bernoulli(),
-  prior = c(
-    prior(normal(0, 0.7), class = "b"),
-    prior(exponential(1), class = "sd")
-  ),
-  chains = 4, cores = 4, iter = 13500, warmup = 1000,
-  save_pars = save_pars(all = TRUE)
-)
-
-H0_err = brm(
-  err_is_within ~ 1 + (1 | participant_id),
-  data = error_data,
-  family = bernoulli(),
-  prior = c(
-    prior(normal(0, 0.7), class = "Intercept"),
-    prior(exponential(1), class = "sd")
-  ),
-  chains = 4, cores = 4, iter = 13500, warmup = 1000,
-  save_pars = save_pars(all = TRUE)
-)
-
-bridge_H1 = bridge_sampler(H1_err)
-bridge_H0 = bridge_sampler(H0_err)
-BF_error_global = bf(bridge_H1, bridge_H0)
-
-print(BF_error_global)
-
 posterior_error = as_draws_df(H1_err)
 
 posterior_error = posterior_error %>%
